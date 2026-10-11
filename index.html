@@ -391,6 +391,15 @@ document.addEventListener('input',function(e){var t=e.target,d=t.dataset;
   else if(d.lines){setPath(S,d.lines,t.value.split('\n').filter(Boolean));changed()}
   else if(d.tiers){S.cats[+d.tiers].tiers=t.value.split(',').map(function(x){return x.split(':')}).filter(function(a){return a.length===2&&!isNaN(parseFloat(a[0]))&&!isNaN(parseFloat(a[1]))}).map(function(a){return {min:parseFloat(a[0]),price:parseFloat(a[1])}}).sort(function(a,b){return a.min-b.min});changed()}
   else if(d.k){setPath(S,d.k,t.value);if(d.k.slice(-4)==='.img')S.site.banners[+d.k.split('.')[2]].imgData=null;changed()}});
+function crc32(u){var T=crc32.t;if(!T){T=crc32.t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[n]=c>>>0}}var r=-1;for(var i=0;i<u.length;i++)r=T[(r^u[i])&255]^(r>>>8);return(r^-1)>>>0}
+function zip(files){var en=new TextEncoder(),parts=[],cd=[],off=0,cs=0;
+  files.forEach(function(f){var nm=en.encode(f.n),crc=crc32(f.d),h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,f.d.length,true);h.setUint32(22,f.d.length,true);h.setUint16(26,nm.length,true);
+    parts.push(h.buffer,nm,f.d);
+    var c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,f.d.length,true);c.setUint32(24,f.d.length,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
+    cd.push(c.buffer,nm);cs+=46+nm.length;off+=30+nm.length+f.d.length});
+  var e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+  return new Blob(parts.concat(cd,[e.buffer]),{type:'application/zip'})}
 function exportSite(){
   var c=document.documentElement.cloneNode(true);
   [].forEach.call(c.querySelectorAll('[data-r]'),function(x){x.innerHTML=''});
@@ -403,9 +412,10 @@ function exportSite(){
   if(base)og.push(['og:url',base+'/']);if(s.preview){og.push(['og:image',(base||'')+'/preview.jpg'],['og:image:width','1200'],['og:image:height','630'],['twitter:image',(base||'')+'/preview.jpg'])}
   og.forEach(function(m){var e=document.createElement('meta');e.setAttribute(m[0].indexOf('twitter')===0?'name':'property',m[0]);e.setAttribute('content',m[1]);hd.appendChild(e)});
   var h=('<!DOCTYPE html>\n'+c.outerHTML).replace('var EDIT='+'true;','var EDIT='+'false;');
-  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download='index.html';document.body.appendChild(a);a.click();a.remove();
-  if(s.preview)setTimeout(function(){var q=document.createElement('a');q.href=s.preview;q.download='preview.jpg';document.body.appendChild(q);q.click();q.remove()},900);
-  toast(s.preview?(base?'Descargados index.html y preview.jpg. Sube los dos a Vercel':'Descargados. Falta la dirección de tu web en "Vista previa"'):'Descargado index.html ('+(h.length/1e6).toFixed(1)+' MB). Sin imagen de vista previa')}
+  var blob,name='index.html';
+  if(s.preview){var by=atob(s.preview.split(',')[1]),pu=new Uint8Array(by.length);for(var q=0;q<by.length;q++)pu[q]=by.charCodeAt(q);blob=zip([{n:'index.html',d:new TextEncoder().encode(h)},{n:'preview.jpg',d:pu}]);name='vicewrld-sitio.zip'}else blob=new Blob([h],{type:'text/html'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  toast(s.preview?(base?'Descargado vicewrld-sitio.zip. Descomprímelo y sube la carpeta a Vercel':'Descargado. Falta la dirección de tu web en "Vista previa"'):'Descargado index.html ('+(h.length/1e6).toFixed(1)+' MB). Sin imagen de vista previa')}
 document.addEventListener('click',function(e){var a=e.target.closest('[data-a]');if(!a)return;var k=a.dataset.a,i=+a.dataset.i,b=S.site.banners;
   if(k==='site')editSite();else if(k==='close')em.classList.remove('show');else if(k==='add')addP();else if(k==='exp')exportSite();
   else if(k==='reset'){if(confirm('¿Borrar todo lo guardado y volver a la versión original de este archivo?'))dbSet('').then(function(){location.reload()})}
