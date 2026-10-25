@@ -284,7 +284,7 @@ var favs=[];try{favs=JSON.parse(localStorage.getItem('vicewrld_favs_v1'))||[]}ca
 function isFav(id){return favs.indexOf(id)>-1}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(cart))}catch(e){}}
 function qty(id){var c=cart[id];return c?SZ.reduce(function(a,s){return a+(c[s]||0)},0):0}
-function toast(t){var e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove('show')},1800)}
+function toast(t){var e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){e.classList.remove('show')},2800)}
 
 /* anuncios + marquee */
 var ai=0;function ann(){var a=SITE.anuncios;if(!a.length){$('ann').innerHTML='';return}$('ann').innerHTML='<span>'+esc(a[ai%a.length])+'</span>';ai++}
@@ -414,8 +414,12 @@ function togFav(id){var i=favs.indexOf(id);if(i>-1)favs.splice(i,1);else favs.pu
   if(cur==='fav'&&!favs.length)cur='all';renderLinks();renderGrid();renderDrop();if($('pov').classList.contains('show'))drawP();toast(i>-1?'Quitada de favoritos':'Guardada en favoritos')}
 function lookH(p){var o=P.filter(function(x){return x.category!==p.category&&x.price>0&&!out(x)&&img(x)});if(!o.length)return '';var st=Math.max(1,Math.floor(o.length/3)),s=p.id%o.length,r=[];for(var i=0;i<Math.min(3,o.length);i++)r.push(o[(s+i*st)%o.length]);
   return '<div><b style="font-size:13px">Completa tu look</b><div class="lk">'+r.map(function(x){return '<div data-look="'+x.id+'"><img src="'+img(x)+'" loading="lazy" alt=""><span>'+esc(x.name)+'</span><b>'+money(x.price)+'</b></div>'}).join('')+'</div></div>'}
+function copyTxt(u){var done=function(){toast('Link copiado: '+u)};
+  function legacy(){var a=document.createElement('textarea');a.value=u;a.style.cssText='position:fixed;top:0;opacity:0';document.body.appendChild(a);a.focus();a.select();var r=false;try{r=document.execCommand('copy')}catch(e){}a.remove();return r}
+  function last(){legacy()?done():window.prompt('Copia este link:',u)}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(done,last)}else last()}
 function shareP(){var p=prod();if(!p)return;var base=SITE.url?normUrl(SITE.url)+'/':location.href.split('#')[0],u=SITE.url?base+'p/'+p.id+'/':base+'#p'+p.id;
-  if(navigator.share){navigator.share({title:p.name+' — VICEWRLD',url:u}).catch(function(){})}else{try{navigator.clipboard.writeText(u).then(function(){toast('Link copiado')},function(){toast(u)})}catch(e){toast(u)}}}
+  if(navigator.share){try{navigator.share({title:p.name+' — VICEWRLD',text:p.name+' — VICEWRLD',url:u}).catch(function(e){if(!e||e.name!=='AbortError')copyTxt(u)})}catch(e){copyTxt(u)}}else copyTxt(u)}
 function upH(T){return Object.keys(T.byCat).map(function(k){var tq=T.byCat[k],nx=(T.gt[k]||[]).filter(function(x){return x.min>tq})[0];return nx?'<div class="up">Agrega <b>'+(nx.min-tq)+'</b> más de '+esc((T.gl[k]||[]).join(' o '))+' y cada una sale a <b>'+money(nx.price)+'</b></div>':''}).join('')}
 function openHash(){var m=location.hash.match(/^#p(\d+)$/);if(m&&P.some(function(x){return x.id===+m[1]}))openP(+m[1])}
 $('mbar').onclick=openCart;
@@ -429,6 +433,7 @@ openHash();
   ids.forEach(function(i){mo.observe($(i),{attributes:true,attributeFilter:['class']})});
   window.addEventListener('popstate',function(){if(ign){ign=0;return}var t=ids.filter(shown)[0];if(!t)return;popping=true;$(t).classList.remove('show');if(t==='dr')$('sh').classList.remove('show');setTimeout(function(){popping=false},0)})
 })();
+function normUrl(u){u=(u||'').trim().replace(/\/+$/,'');if(u&&!/^https?:/.test(u))u='https://'+u;if(/^http:\/\/(?!localhost)/.test(u))u=u.replace('http://','https://');return u}
 /* ===== BIENVENIDA ===== */
 var wel=document.createElement('div');wel.className='ov edit-only';wel.id='wel';wel.innerHTML='<div class="wi"><button class="x" data-w="x" aria-label="Cerrar">&#10005;</button><img id="wimg" alt="Bienvenida"></div>';document.body.appendChild(wel);
 function showWelcome(){if(SITE.welcome&&!/^#p\d+$/.test(location.hash)){$('wimg').src=SITE.welcome;wel.classList.add('show')}else wel.classList.remove('show')}
@@ -497,7 +502,6 @@ function toBin(d,max,webp){return new Promise(function(res){var im=new Image();i
 function sq(d,n){return new Promise(function(res){var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=c.height=n;var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,n,n);var s=Math.min(n/im.width,n/im.height),w=im.width*s,h=im.height*s;x.drawImage(im,(n-w)/2,(n-h)/2,w,h);c.toBlob(function(b){b.arrayBuffer().then(function(ab){res(new Uint8Array(ab))})},'image/jpeg',.82)};im.src=d})}
 function prodPage(p,base,og){var T=p.name+' — VICEWRLD',D=(p.price>0?money(p.price):'Consulta el precio')+' · Pídelo por WhatsApp',u=base+'/p/'+p.id+'/';
   return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(T)+'</title><meta name="description" content="'+esc(D)+'"><meta property="og:title" content="'+esc(T)+'"><meta property="og:description" content="'+esc(D)+'"><meta property="og:type" content="website"><meta property="og:url" content="'+esc(u)+'"><meta property="og:image" content="'+esc(base+'/'+og)+'"><meta property="og:image:width" content="600"><meta property="og:image:height" content="600"><meta name="twitter:card" content="summary"><meta name="twitter:image" content="'+esc(base+'/'+og)+'"></head><body style="font-family:system-ui,sans-serif;padding:28px"><p>Abriendo <b>'+esc(p.name)+'</b>…</p><p><a href="/#p'+p.id+'">Si no se abre, toca aquí</a></p><script>location.replace("/#p'+p.id+'")<\/script></body></html>'}
-function normUrl(u){u=(u||'').trim().replace(/\/+$/,'');if(u&&!/^https?:/.test(u))u='https://'+u;if(/^http:\/\/(?!localhost)/.test(u))u=u.replace('http://','https://');return u}
 function plink(p){return SITE.url?normUrl(SITE.url)+'/p/'+p.id+'/':''}
 function linkH(p){var u=plink(p);return '<label>Link para compartir (stories, WhatsApp)<input readonly value="'+esc(u||'Escribe antes tu dirección web en Editar sitio → Vista previa')+'" onfocus="this.select()"></label>'+(u?'<button data-a="plink" style="margin-top:8px">Copiar link</button>':'')}
 async function exportSite(){
